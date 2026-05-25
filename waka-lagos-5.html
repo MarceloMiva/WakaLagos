@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Waka Lagos</title>
+<link rel="stylesheet" href="https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.25.0/maps/maps.css">
+<script src="https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.25.0/maps/maps-web.min.js"></script>
+<script src="https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.25.0/services/services-web.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#1A73E8;--brand2:#1557B0;--green:#0F9D58;--red:#DB4437;--yellow:#F4B400;
+  --orange:#FF6D00;--purple:#7C4DFF;--teal:#00BCD4;
+  --white:#FFFFFF;--s1:#F8F9FA;--s2:#F1F3F4;--s3:#E8EAED;
+  --text:#202124;--text2:#5F6368;--text3:#80868B;
+  --border:#DADCE0;--shadow:0 2px 10px rgba(0,0,0,0.12);
+  --shadow-lg:0 8px 30px rgba(0,0,0,0.16);--radius:16px;--radius-sm:10px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:#E8EAED;color:var(--text);-webkit-font-smoothing:antialiased;}
+
+/* SPLASH */
+#splash{position:fixed;inset:0;background:#fff;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity 0.4s;}
+#splash.out{opacity:0;pointer-events:none;}
+.sp-wrap{display:flex;align-items:center;gap:12px;}
+.sp-icon{width:60px;height:60px;background:linear-gradient(135deg,var(--brand),#4A90E2);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:0 6px 24px rgba(26,115,232,0.35);}
+.sp-txt{display:flex;flex-direction:column;}
+.sp-name{font-size:30px;font-weight:800;letter-spacing:-1px;color:var(--text);}
+.sp-name b{color:var(--brand);}
+.sp-tag{font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+.sp-bar{width:200px;height:3px;background:var(--s3);border-radius:2px;overflow:hidden;}
+.sp-fill{height:100%;width:0;background:linear-gradient(90deg,var(--brand),var(--yellow));border-radius:2px;transition:width 0.35s ease;}
+.sp-msg{font-size:12px;color:var(--text3);}
+
+/* APP */
+#app{height:100vh;display:flex;flex-direction:column;opacity:0;transition:opacity 0.4s;position:relative;}
+#app.on{opacity:1;}
+#map{position:absolute;inset:0;z-index:1;}
+
+/* GPS FAB */
+#fab-gps{position:absolute;right:14px;z-index:100;width:50px;height:50px;background:#fff;border:none;border-radius:50%;box-shadow:var(--shadow-lg);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;transition:all 0.2s;}
+#fab-gps:active{transform:scale(0.9);}
+#fab-gps.live{background:var(--brand);color:#fff;box-shadow:0 4px 20px rgba(26,115,232,0.4);animation:gpsP 2s infinite;}
+@keyframes gpsP{50%{box-shadow:0 0 0 10px rgba(26,115,232,0.12);}}
+
+/* LAYERS FAB */
+#fab-layers{position:absolute;right:14px;z-index:100;width:50px;height:50px;background:#fff;border:none;border-radius:50%;box-shadow:var(--shadow-lg);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;transition:all 0.2s;}
+#fab-layers:active{transform:scale(0.9);}
+
+/* STATUS */
+#status-bar{position:absolute;left:14px;z-index:100;background:#fff;border-radius:20px;padding:7px 14px;box-shadow:var(--shadow);font-size:12px;font-weight:500;display:none;align-items:center;gap:7px;white-space:nowrap;}
+#status-bar.show{display:flex;}
+#status-bar.live{color:var(--green);}
+#status-bar.err{color:var(--red);}
+.s-dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:blink 2s infinite;}
+@keyframes blink{50%{opacity:0.3;}}
+
+/* BOTTOM SHEET */
+#sheet{position:absolute;bottom:0;left:0;right:0;z-index:200;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -4px 30px rgba(0,0,0,0.15);display:flex;flex-direction:column;transition:height 0.35s cubic-bezier(0.4,0,0.2,1);}
+.drag-bar{width:36px;height:4px;background:var(--s3);border-radius:2px;margin:10px auto 0;}
+.sheet-top{padding:10px 18px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sheet-logo{font-size:17px;font-weight:800;letter-spacing:-0.5px;color:var(--text);}
+.sheet-logo b{color:var(--brand);}
+#sheet-status-txt{font-size:11px;color:var(--text3);}
+
+/* TABS */
+.tab-row{display:flex;border-bottom:1.5px solid var(--border);padding:0 18px;margin-top:10px;flex-shrink:0;}
+.tab-btn{flex:1;padding:9px 0;font-size:12px;font-weight:700;letter-spacing:0.3px;text-transform:uppercase;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;transition:all 0.2s;}
+.tab-btn.on{color:var(--brand);border-bottom-color:var(--brand);}
+.sheet-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;}
+.sheet-body::-webkit-scrollbar{display:none;}
+
+/* ── ROUTE TAB ── */
+.r-wrap{padding:16px 18px;}
+
+/* MODE SELECTOR */
+.mode-label{font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.mode-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;}
+.mode-card{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;background:var(--s1);border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s;-webkit-tap-highlight-color:transparent;}
+.mode-card:active{transform:scale(0.95);}
+.mode-card.on{background:#EFF6FF;border-color:var(--brand);box-shadow:0 2px 10px rgba(26,115,232,0.15);}
+.mode-card.on .mc-ico{filter:none;}
+.mode-card .mc-ico{font-size:22px;line-height:1;}
+.mode-card .mc-lbl{font-size:10px;font-weight:700;color:var(--text2);letter-spacing:0.3px;}
+.mode-card.on .mc-lbl{color:var(--brand);}
+.mode-card.na{opacity:0.4;pointer-events:none;}
+
+/* SEARCH INPUTS */
+.inp-card{background:var(--s1);border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:visible;margin-bottom:10px;}
+.inp-row{display:flex;align-items:center;gap:10px;padding:11px 14px;position:relative;}
+.inp-row+.inp-row{border-top:1px solid var(--border);}
+.inp-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.dot-from{background:var(--brand);}
+.dot-to{background:var(--red);}
+.r-inp{flex:1;border:none;outline:none;font-family:'Inter',sans-serif;font-size:14px;color:var(--text);background:transparent;}
+.r-inp::placeholder{color:var(--text3);}
+.r-ac{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);z-index:9999;max-height:180px;overflow-y:auto;box-shadow:var(--shadow);}
+.r-ac::-webkit-scrollbar{display:none;}
+.ac-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s;}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:active{background:var(--s2);}
+.ac-name{font-size:13px;font-weight:600;color:var(--text);}
+.ac-sub{font-size:11px;color:var(--text3);margin-top:1px;}
+
+/* SWAP */
+.inp-actions{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.swap-btn{width:34px;height:34px;background:var(--s2);border:1.5px solid var(--border);border-radius:50%;color:var(--text2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
+.swap-btn:active{transform:rotate(180deg);}
+.loc-btn{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--brand);background:none;border:none;cursor:pointer;padding:0;}
+
+#go-btn{width:100%;background:linear-gradient(135deg,var(--brand),var(--brand2));border:none;border-radius:var(--radius-sm);padding:15px;color:#fff;font-family:'Inter',sans-serif;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 16px rgba(26,115,232,0.3);letter-spacing:0.2px;transition:all 0.2s;}
+#go-btn:active{transform:scale(0.98);}
+
+/* RESULT */
+.result-box{margin-top:16px;}
+.r-summary{background:var(--s1);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;}
+.r-sum-title{font-size:14px;font-weight:800;color:var(--text);margin-bottom:8px;}
+.r-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.rchip{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;}
+.rc-blue{background:#DBEAFE;color:var(--brand);}
+.rc-grey{background:var(--s3);color:var(--text2);}
+.rc-green{background:#D1FAE5;color:var(--green);}
+
+/* STEPS */
+.steps{margin-top:4px;}
+.step{display:flex;gap:12px;align-items:stretch;}
+.step-l{display:flex;flex-direction:column;align-items:center;width:42px;flex-shrink:0;}
+.step-bub{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:2px solid transparent;}
+.b-walk{background:#F3F4F6;border-color:#D1D5DB;}
+.b-brt{background:#DBEAFE;border-color:#93C5FD;}
+.b-danfo{background:#FEF9C3;border-color:#FDE047;}
+.b-keke{background:#D1FAE5;border-color:#6EE7B7;}
+.b-okada{background:#FEE2E2;border-color:#FCA5A5;}
+.b-ferry{background:#E0F2FE;border-color:#7DD3FC;}
+.b-trx{background:#F5F3FF;border-color:#C4B5FD;}
+.step-line{width:2px;flex:1;min-height:12px;background:var(--border);margin:3px 0;}
+.step-r{flex:1;padding-bottom:14px;}
+.step-title{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:3px;}
+.step-detail{font-size:12px;color:var(--text2);line-height:1.5;}
+.step-tag{display:inline-flex;align-items:center;gap:3px;margin-top:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;}
+.tag-warn{background:#FEF3C7;color:#92400E;}
+.tag-info{background:#DBEAFE;color:#1E40AF;}
+.tag-green{background:#D1FAE5;color:#065F46;}
+
+/* NOTICE */
+.notice{display:flex;gap:8px;background:#FEF3C7;border:1px solid #FCD34D;border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;}
+.notice-ico{font-size:15px;flex-shrink:0;}
+.notice-txt{font-size:12px;color:#78350F;line-height:1.5;}
+
+/* NEARBY */
+.nb-wrap{padding:16px 18px;}
+.nb-hd{font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--text3);margin-bottom:12px;}
+.nb-card{display:flex;align-items:center;gap:12px;padding:12px;background:var(--s1);border:1.5px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer;transition:all 0.15s;}
+.nb-card:active{background:var(--s2);}
+.nb-ico{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.nb-info{flex:1;min-width:0;}
+.nb-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nb-meta{font-size:11px;color:var(--text3);margin-top:2px;}
+.nb-dist{font-size:12px;font-weight:700;color:var(--brand);flex-shrink:0;}
+
+/* LINES */
+.ln-wrap{padding:16px 18px;}
+.ln-sec-hd{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;margin-top:14px;}
+.ln-sec-hd:first-child{margin-top:0;}
+.ln-card{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--s1);border:1.5px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;cursor:pointer;transition:all 0.15s;}
+.ln-card:active{border-color:var(--brand);background:#EFF6FF;}
+.ln-pill{width:5px;height:34px;border-radius:3px;flex-shrink:0;}
+.ln-info{flex:1;}
+.ln-name{font-size:13px;font-weight:700;color:var(--text);}
+.ln-meta{font-size:11px;color:var(--text3);margin-top:2px;}
+.ln-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;}
+.lb-brt{background:#DBEAFE;color:var(--brand);}
+.lb-danfo{background:#FEF9C3;color:#854D0E;}
+.lb-ferry{background:#E0F2FE;color:#0369A1;}
+
+/* TOMTOM overrides */
+.mapboxgl-ctrl-attrib,.mapboxgl-ctrl-logo{display:none!important;}
+.tt-aa-button{display:none!important;}
+.mapboxgl-ctrl-group{box-shadow:var(--shadow)!important;border-radius:10px!important;overflow:hidden!important;}
+.mapboxgl-ctrl-group button{background:#fff!important;border:none!important;}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="sp-wrap">
+    <div class="sp-icon">🚌</div>
+    <div class="sp-txt">
+      <div class="sp-name">Waka<b>Lagos</b></div>
+      <div class="sp-tag">Smart Transit Navigator</div>
+    </div>
+  </div>
+  <div class="sp-bar"><div class="sp-fill" id="sp-fill"></div></div>
+  <div class="sp-msg" id="sp-msg">Connecting to TomTom Maps...</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div id="map"></div>
+
+  <!-- FABs -->
+  <button id="fab-gps">📍</button>
+  <button id="fab-layers">🗺️</button>
+
+  <!-- STATUS -->
+  <div id="status-bar"><div class="s-dot"></div><span id="s-txt"></span></div>
+
+  <!-- BOTTOM SHEET -->
+  <div id="sheet">
+    <div class="drag-bar"></div>
+    <div class="sheet-top">
+      <div class="sheet-logo">Waka<b>Lagos</b></div>
+      <div id="sheet-status-txt">Lagos Transit Navigator</div>
+    </div>
+    <div class="tab-row">
+      <button class="tab-btn on" data-tab="route">Route</button>
+      <button class="tab-btn" data-tab="nearby">Nearby</button>
+      <button class="tab-btn" data-tab="lines">Lines</button>
+    </div>
+    <div class="sheet-body">
+
+      <!-- ROUTE -->
+      <div id="tab-route">
+        <div class="r-wrap">
+          <!-- 1. MODE -->
+          <div class="mode-label">Select transport mode</div>
+          <div class="mode-grid" id="mode-grid">
+            <div class="mode-card on" data-mode="all"><span class="mc-ico">🗺️</span><span class="mc-lbl">Any</span></div>
+            <div class="mode-card" data-mode="brt"><span class="mc-ico">🚌</span><span class="mc-lbl">BRT</span></div>
+            <div class="mode-card" data-mode="danfo"><span class="mc-ico">🚐</span><span class="mc-lbl">Danfo</span></div>
+            <div class="mode-card" data-mode="keke"><span class="mc-ico">🛺</span><span class="mc-lbl">Keke</span></div>
+            <div class="mode-card" data-mode="okada"><span class="mc-ico">🏍️</span><span class="mc-lbl">Okada</span></div>
+            <div class="mode-card" data-mode="ferry"><span class="mc-ico">⛴️</span><span class="mc-lbl">Ferry</span></div>
+            <div class="mode-card" data-mode="walk"><span class="mc-ico">🚶</span><span class="mc-lbl">Walk</span></div>
+          </div>
+
+          <!-- 2. INPUTS -->
+          <div class="inp-card">
+            <div class="inp-row" id="from-row">
+              <div class="inp-dot dot-from"></div>
+              <div style="flex:1;position:relative;">
+                <input class="r-inp" id="from-inp" type="text" placeholder="From — stop name or address" autocomplete="off">
+                <div class="r-ac" id="ac-from" style="display:none;"></div>
+              </div>
+              <button class="loc-btn" id="use-loc-btn" title="Use my location">📍</button>
+            </div>
+            <div class="inp-row">
+              <div class="inp-dot dot-to"></div>
+              <div style="flex:1;position:relative;">
+                <input class="r-inp" id="to-inp" type="text" placeholder="To — destination" autocomplete="off">
+                <div class="r-ac" id="ac-to" style="display:none;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="inp-actions">
+            <button class="swap-btn" id="swap-btn">⇅</button>
+            <span style="font-size:11px;color:var(--text3);">Tap ⇅ to swap</span>
+          </div>
+
+          <button id="go-btn">🔍 Get Directions</button>
+
+          <div class="result-box" id="result-box"></div>
+        </div>
+      </div>
+
+      <!-- NEARBY -->
+      <div id="tab-nearby" style="display:none;">
+        <div class="nb-wrap">
+          <div class="nb-hd" id="nb-hd">Tap 📍 to find stops near you</div>
+          <div id="nb-list"></div>
+        </div>
+      </div>
+
+      <!-- LINES -->
+      <div id="tab-lines" style="display:none;">
+        <div class="ln-wrap" id="ln-wrap"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY = 'oyPVBBW1tFFRktdGYQx7vCOr3Gof6XSj';
+
+// ══════════════════════════════════════════════
+// DATABASE
+// ══════════════════════════════════════════════
+const STOPS = {
+  "Ikorodu Garage":{lat:6.6194,lng:3.5046,type:"BRT Terminal",routes:["BRT-1"],keke:true},
+  "Aruna":{lat:6.6100,lng:3.4980,type:"BRT Stop",routes:["BRT-1"]},
+  "Agric":{lat:6.6020,lng:3.4900,type:"BRT Stop",routes:["BRT-1"],keke:true},
+  "Majidun Ogolonto":{lat:6.5950,lng:3.4820,type:"BRT Stop",routes:["BRT-1"]},
+  "Majidun Awori":{lat:6.5880,lng:3.4750,type:"BRT Stop",routes:["BRT-1"]},
+  "Irawo":{lat:6.5800,lng:3.4670,type:"BRT Stop",routes:["BRT-1"]},
+  "Idera":{lat:6.5740,lng:3.4600,type:"BRT Stop",routes:["BRT-1"]},
+  "Owode Onirin":{lat:6.5660,lng:3.4530,type:"BRT Stop",routes:["BRT-1"],keke:true},
+  "Mile 12":{lat:6.6025,lng:3.3840,type:"BRT Terminal",routes:["BRT-1","BRT-2","DANFO-OJ"],keke:true,bike:true},
+  "Ketu":{lat:6.5890,lng:3.3810,type:"BRT Stop",routes:["BRT-1","BRT-2"]},
+  "Ojota":{lat:6.5780,lng:3.3740,type:"BRT Stop",routes:["BRT-1","BRT-2","DANFO-OJ"]},
+  "New Garage":{lat:6.5730,lng:3.3700,type:"BRT Stop",routes:["BRT-1"]},
+  "Maryland":{lat:6.5600,lng:3.3630,type:"BRT Stop",routes:["BRT-1","BRT-2"]},
+  "Ikeja":{lat:6.5954,lng:3.3378,type:"Bus Terminal",routes:["BRT-1","BRT-3","DANFO-IK"],keke:true},
+  "Idiroko":{lat:6.5690,lng:3.3580,type:"BRT Stop",routes:["BRT-1"]},
+  "Anthony":{lat:6.5530,lng:3.3600,type:"BRT Stop",routes:["BRT-1","BRT-2"]},
+  "Oshodi":{lat:6.5570,lng:3.3490,type:"BRT Terminal",routes:["BRT-1","BRT-3","BRT-4","BRT-7","DANFO-OS"],keke:true},
+  "Obanikoro":{lat:6.5450,lng:3.3670,type:"BRT Stop",routes:["BRT-1"]},
+  "Palmgrove":{lat:6.5400,lng:3.3680,type:"BRT Stop",routes:["BRT-1"]},
+  "Onipanu":{lat:6.5350,lng:3.3680,type:"BRT Stop",routes:["BRT-1"]},
+  "Fadeyi":{lat:6.5300,lng:3.3680,type:"BRT Stop",routes:["BRT-1","BRT-2"]},
+  "Yaba":{lat:6.5095,lng:3.3776,type:"BRT Terminal",routes:["BRT-1","BRT-2","DANFO-YB"],keke:true},
+  "Moshalashi":{lat:6.5060,lng:3.3720,type:"BRT Stop",routes:["BRT-1"]},
+  "Barracks":{lat:6.5000,lng:3.3680,type:"BRT Stop",routes:["BRT-1"]},
+  "Stadium":{lat:6.4970,lng:3.3650,type:"BRT Stop",routes:["BRT-1","DANFO-SU"]},
+  "Iponri":{lat:6.4930,lng:3.3620,type:"BRT Stop",routes:["BRT-1","DANFO-SU"]},
+  "Costain":{lat:6.4890,lng:3.3600,type:"BRT Stop",routes:["BRT-1"]},
+  "Leventis":{lat:6.4600,lng:3.3900,type:"BRT Stop",routes:["BRT-1"]},
+  "CMS":{lat:6.4541,lng:3.3947,type:"BRT Terminal",routes:["BRT-1","BRT-5","DANFO-IS"],keke:true},
+  "TBS":{lat:6.4510,lng:3.3920,type:"BRT Terminal",routes:["BRT-1","BRT-2"]},
+  "Gbagada":{lat:6.5530,lng:3.3810,type:"BRT Stop",routes:["BRT-2"]},
+  "Pedro":{lat:6.5420,lng:3.3750,type:"BRT Stop",routes:["BRT-2"]},
+  "Oyingbo":{lat:6.4740,lng:3.3900,type:"BRT Stop",routes:["BRT-2"]},
+  "Iddo":{lat:6.4660,lng:3.3910,type:"BRT Stop",routes:["BRT-2"]},
+  "Airport Hotel":{lat:6.5750,lng:3.3280,type:"BRT Stop",routes:["BRT-3"]},
+  "Seven-Up":{lat:6.5830,lng:3.3200,type:"BRT Stop",routes:["BRT-3"]},
+  "Alausa":{lat:6.5920,lng:3.3280,type:"BRT Stop",routes:["BRT-3"]},
+  "Kessington":{lat:6.6010,lng:3.3350,type:"BRT Stop",routes:["BRT-3"]},
+  "Berger":{lat:6.6080,lng:3.3520,type:"BRT Terminal",routes:["BRT-3","DANFO-BG"],keke:true,bike:true},
+  "OPIC":{lat:6.6200,lng:3.3600,type:"BRT Stop",routes:["BRT-3"]},
+  "Otedola Bridge":{lat:6.6280,lng:3.3680,type:"BRT Stop",routes:["BRT-3"]},
+  "Ojodu":{lat:6.6350,lng:3.3740,type:"Danfo Stop",routes:["DANFO-BG"]},
+  "Mile 2":{lat:6.4770,lng:3.3000,type:"BRT Terminal",routes:["BRT-4","BRT-6","DANFO-BD"],keke:true},
+  "Apple Junction":{lat:6.4720,lng:3.2950,type:"BRT Stop",routes:["BRT-4"]},
+  "Festac First Gate":{lat:6.4650,lng:3.2870,type:"BRT Stop",routes:["BRT-4"],keke:true},
+  "Second Avenue":{lat:6.4610,lng:3.2830,type:"BRT Stop",routes:["BRT-4"]},
+  "Third Avenue":{lat:6.4580,lng:3.2800,type:"BRT Stop",routes:["BRT-4"]},
+  "Fifth Avenue":{lat:6.4550,lng:3.2770,type:"BRT Stop",routes:["BRT-4"]},
+  "Seventh Avenue":{lat:6.4520,lng:3.2740,type:"BRT Terminal",routes:["BRT-4"],keke:true},
+  "Bonny Camp":{lat:6.4400,lng:3.4140,type:"BRT Stop",routes:["BRT-5"]},
+  "Maroko":{lat:6.4350,lng:3.4350,type:"BRT Stop",routes:["BRT-5"]},
+  "VGC":{lat:6.4300,lng:3.4600,type:"BRT Stop",routes:["BRT-5"]},
+  "Jakande":{lat:6.4700,lng:3.5450,type:"BRT Stop",routes:["BRT-5"],keke:true},
+  "Igbo Efon":{lat:6.4750,lng:3.5600,type:"BRT Stop",routes:["BRT-5"]},
+  "Second Rainbow":{lat:6.4780,lng:3.5750,type:"BRT Stop",routes:["BRT-5"]},
+  "First Rainbow":{lat:6.4810,lng:3.5900,type:"BRT Stop",routes:["BRT-5"]},
+  "Elere":{lat:6.4840,lng:3.6050,type:"BRT Stop",routes:["BRT-5"]},
+  "Ajah":{lat:6.4660,lng:3.5920,type:"BRT Terminal",routes:["BRT-5","DANFO-AJ"],keke:true,bike:true},
+  "Abraham Adesanya":{lat:6.4610,lng:3.6080,type:"BRT Stop",routes:["BRT-5"]},
+  "Awoyaya":{lat:6.4560,lng:3.6250,type:"BRT Stop",routes:["BRT-5"]},
+  "Lakowe":{lat:6.4510,lng:3.6400,type:"BRT Stop",routes:["BRT-5"]},
+  "Sangotedo":{lat:6.4460,lng:3.6560,type:"BRT Terminal",routes:["BRT-5"],keke:true},
+  "Volkswagen":{lat:6.4700,lng:3.2870,type:"BRT Stop",routes:["BRT-6","DANFO-ST"]},
+  "Kirikiri":{lat:6.4550,lng:3.2680,type:"BRT Stop",routes:["BRT-6"]},
+  "Coconut":{lat:6.4490,lng:3.2580,type:"BRT Stop",routes:["BRT-6"]},
+  "Liverpool":{lat:6.4450,lng:3.2500,type:"BRT Stop",routes:["BRT-6"]},
+  "Apapa First Gate":{lat:6.4400,lng:3.2430,type:"BRT Terminal",routes:["BRT-6"],keke:true},
+  "Tin Can Island Gate":{lat:6.4350,lng:3.2380,type:"BRT Stop",routes:["BRT-6"]},
+  "Iyana Ipaja":{lat:6.5960,lng:3.2710,type:"BRT Terminal",routes:["BRT-7","DANFO-AL"],keke:true,bike:true},
+  "Igando":{lat:6.5680,lng:3.2920,type:"BRT Stop",routes:["BRT-7","DANFO-AL"],keke:true},
+  "Egbeda":{lat:6.5850,lng:3.2870,type:"Danfo Stop",routes:["BRT-7","DANFO-AL"],keke:true},
+  "Abule Egba":{lat:6.6280,lng:3.2760,type:"BRT Terminal",routes:["BRT-7","DANFO-AB"],keke:true,bike:true},
+  "Iba New Site":{lat:6.4660,lng:3.2500,type:"Danfo Stop",routes:["DANFO-ST"],keke:true},
+  "Satellite Town":{lat:6.4600,lng:3.2450,type:"Danfo Terminal",routes:["DANFO-ST"],keke:true},
+  "Trade Fair":{lat:6.4700,lng:3.2650,type:"Danfo Stop",routes:["DANFO-BD"],keke:true},
+  "Ijanikin":{lat:6.4800,lng:3.2100,type:"Danfo Stop",routes:["DANFO-BD"]},
+  "LASU":{lat:6.4750,lng:3.2050,type:"Danfo Stop",routes:["DANFO-BD"]},
+  "Iyana-Iba":{lat:6.4680,lng:3.1950,type:"Danfo Stop",routes:["DANFO-BD"],keke:true},
+  "Badagry":{lat:6.4142,lng:2.8927,type:"Danfo Terminal",routes:["DANFO-BD"],keke:true},
+  "Tejuosho":{lat:6.5070,lng:3.3700,type:"Danfo Stop",routes:["DANFO-YB","DANFO-SU"],keke:true},
+  "Bode Thomas":{lat:6.5010,lng:3.3590,type:"Danfo Stop",routes:["DANFO-SU"]},
+  "Eric Moore":{lat:6.4970,lng:3.3550,type:"Danfo Stop",routes:["DANFO-SU"]},
+  "Lawanson":{lat:6.4920,lng:3.3520,type:"Danfo Stop",routes:["DANFO-SU"],keke:true},
+  "Aguda":{lat:6.4850,lng:3.3510,type:"Danfo Stop",routes:["DANFO-SU"]},
+  "Allen Junction":{lat:6.6010,lng:3.3500,type:"Danfo Stop",routes:["DANFO-IK"],keke:true},
+  "Computer Village":{lat:6.5970,lng:3.3300,type:"Danfo Stop",routes:["DANFO-IK"],keke:true},
+  "Ikeja Along":{lat:6.5880,lng:3.3240,type:"Danfo Stop",routes:["DANFO-IK","BRT-3"]},
+  "Ogba":{lat:6.6200,lng:3.3410,type:"Danfo Stop",routes:["DANFO-AG"],keke:true},
+  "Agege":{lat:6.6170,lng:3.3260,type:"Bus Terminal",routes:["DANFO-AG"],keke:true,bike:true},
+  "Pen Cinema":{lat:6.6130,lng:3.3190,type:"Danfo Stop",routes:["DANFO-AG"],keke:true},
+  "Ikotun":{lat:6.5620,lng:3.3000,type:"Danfo Stop",routes:["DANFO-AL"],keke:true,bike:true},
+  "Idimu":{lat:6.5720,lng:3.2820,type:"Danfo Stop",routes:["DANFO-AL"],keke:true},
+  "Ayobo":{lat:6.5900,lng:3.2680,type:"Danfo Stop",routes:["DANFO-AL"],keke:true},
+  "Admiralty Circle":{lat:6.4355,lng:3.4273,type:"Danfo Stop",routes:["DANFO-LK"],keke:true},
+  "Akin Adesola":{lat:6.4330,lng:3.4460,type:"Danfo Stop",routes:["DANFO-LK","DANFO-VI"],keke:true},
+  "Bar Beach":{lat:6.4266,lng:3.4200,type:"Danfo Stop",routes:["DANFO-VI"]},
+  "Ozumba Mbadiwe":{lat:6.4290,lng:3.4310,type:"Danfo Stop",routes:["DANFO-VI"]},
+  "Oniru Market":{lat:6.4340,lng:3.4500,type:"Danfo Stop",routes:["DANFO-VI"],keke:true},
+  "Falomo":{lat:6.4490,lng:3.4280,type:"Danfo Stop",routes:["DANFO-IK2"],keke:true},
+  "Onikan":{lat:6.4530,lng:3.3980,type:"Danfo Stop",routes:["DANFO-IS"]},
+  "Marina":{lat:6.4520,lng:3.3960,type:"Danfo Stop",routes:["DANFO-IS"]},
+  "Ogudu":{lat:6.5710,lng:3.3810,type:"Danfo Stop",routes:["DANFO-OJ"]},
+  "Alapere":{lat:6.5760,lng:3.3860,type:"Danfo Stop",routes:["DANFO-OJ"],keke:true},
+  "Alakuko":{lat:6.6380,lng:3.2570,type:"Danfo Stop",routes:["DANFO-AB"],keke:true},
+  "Alagbado":{lat:6.6510,lng:3.2420,type:"Danfo Stop",routes:["DANFO-AB"],keke:true},
+  "Sango-Ota":{lat:6.7070,lng:3.1820,type:"Danfo Terminal",routes:["DANFO-AB"],keke:true},
+  "Ejigbo":{lat:6.5490,lng:3.3220,type:"Danfo Stop",routes:["DANFO-OS"],keke:true},
+  "Isolo":{lat:6.5390,lng:3.3290,type:"Danfo Stop",routes:["DANFO-OS"],keke:true},
+  "Bariga":{lat:6.5390,lng:3.3940,type:"Danfo Stop",routes:["DANFO-OS"],keke:true},
+  "Ajegunle":{lat:6.4680,lng:3.3090,type:"Danfo Stop",routes:["DANFO-OS"],keke:true},
+  // LEKKI
+  "Lekki Phase 1 Gate":{lat:6.4442,lng:3.4733,type:"Danfo Stop",routes:["DANFO-LK"],keke:true},
+  "Chevron":{lat:6.4390,lng:3.5200,type:"Danfo Stop",routes:["DANFO-LK"],keke:true},
+  "Osapa London":{lat:6.4460,lng:3.5620,type:"Danfo Stop",routes:["DANFO-LK"],keke:true},
+  // FERRY
+  "Marina Jetty":{lat:6.4530,lng:3.4020,type:"Ferry Terminal",routes:["FERRY-1","FERRY-2"],ferry:true},
+  "Ikorodu Ferry Terminal":{lat:6.6100,lng:3.5050,type:"Ferry Terminal",routes:["FERRY-2"],ferry:true},
+  "Apapa Jetty":{lat:6.4500,lng:3.3600,type:"Ferry Terminal",routes:["FERRY-3"],ferry:true},
+  "Five Cowries Terminal":{lat:6.4520,lng:3.4230,type:"Ferry Terminal",routes:["FERRY-1","FERRY-3"],ferry:true},
+  "Badore Jetty":{lat:6.4680,lng:3.5620,type:"Ferry Terminal",routes:["FERRY-1"],ferry:true},
+};
+
+const ROUTES = {
+  "BRT-1":{name:"Ikorodu → TBS",short:"Ikorodu–TBS",type:"BRT",color:"#1A73E8",stops:["Ikorodu Garage","Aruna","Agric","Majidun Ogolonto","Majidun Awori","Irawo","Idera","Owode Onirin","Mile 12","Ketu","Ojota","New Garage","Maryland","Idiroko","Anthony","Oshodi","Obanikoro","Palmgrove","Onipanu","Fadeyi","Yaba","Moshalashi","Barracks","Stadium","Iponri","Costain","Leventis","CMS","TBS"]},
+  "BRT-2":{name:"Mile 12 → CMS",short:"Mile12–CMS",type:"BRT",color:"#1A73E8",stops:["Mile 12","Ketu","Ojota","Maryland","Anthony","Gbagada","Pedro","Fadeyi","Yaba","Oyingbo","Iddo","TBS","CMS"]},
+  "BRT-3":{name:"Oshodi → Berger",short:"Oshodi–Berger",type:"BRT",color:"#1A73E8",stops:["Oshodi","Airport Hotel","Seven-Up","Ikeja","Alausa","Kessington","Berger","OPIC","Otedola Bridge"]},
+  "BRT-4":{name:"Mile 2 → Festac",short:"Mile2–Festac",type:"BRT",color:"#1A73E8",stops:["Mile 2","Apple Junction","Festac First Gate","Second Avenue","Third Avenue","Fifth Avenue","Seventh Avenue"]},
+  "BRT-5":{name:"CMS → Sangotedo",short:"CMS–Sangotedo",type:"BRT",color:"#1A73E8",stops:["CMS","Bonny Camp","Maroko","VGC","Jakande","Igbo Efon","Second Rainbow","First Rainbow","Elere","Ajah","Abraham Adesanya","Awoyaya","Lakowe","Sangotedo"]},
+  "BRT-6":{name:"Mile 2 → Apapa",short:"Mile2–Apapa",type:"BRT",color:"#1A73E8",stops:["Mile 2","Volkswagen","Kirikiri","Coconut","Liverpool","Apapa First Gate","Tin Can Island Gate"]},
+  "BRT-7":{name:"Oshodi → Abule Egba",short:"Oshodi–AbuEgba",type:"BRT",color:"#1A73E8",stops:["Oshodi","Iyana Ipaja","Igando","Egbeda","Abule Egba"]},
+  "DANFO-SU":{name:"Yaba → Surulere",short:"Yaba–Surulere",type:"Danfo",color:"#F4B400",stops:["Yaba","Tejuosho","Stadium","Iponri","Bode Thomas","Eric Moore","Lawanson","Aguda"]},
+  "DANFO-IK":{name:"Ikeja Internal",short:"Ikeja Loop",type:"Danfo",color:"#F4B400",stops:["Ikeja","Allen Junction","Computer Village","Ikeja Along"]},
+  "DANFO-AG":{name:"Ikeja → Agege",short:"Ikeja–Agege",type:"Danfo",color:"#F4B400",stops:["Ikeja","Ogba","Agege","Pen Cinema"]},
+  "DANFO-AL":{name:"Iyana Ipaja → Ikotun",short:"IyanaIpaja–Ikotun",type:"Danfo",color:"#F4B400",stops:["Iyana Ipaja","Igando","Ikotun","Idimu","Egbeda","Ayobo"]},
+  "DANFO-BD":{name:"Mile 2 → Badagry",short:"Mile2–Badagry",type:"Danfo",color:"#F4B400",stops:["Mile 2","Volkswagen","Trade Fair","Ijanikin","LASU","Iyana-Iba","Badagry"]},
+  "DANFO-AB":{name:"Abule Egba → Sango-Ota",short:"AbuEgba–Sango",type:"Danfo",color:"#F4B400",stops:["Abule Egba","Alakuko","Alagbado","Sango-Ota"]},
+  "DANFO-OJ":{name:"Ojota → Ogudu",short:"Ojota–Ogudu",type:"Danfo",color:"#F4B400",stops:["Ojota","Ogudu","Alapere","Mile 12"]},
+  "DANFO-LK":{name:"CMS → Lekki/Ajah",short:"CMS–Lekki",type:"Danfo",color:"#F4B400",stops:["CMS","Admiralty Circle","Lekki Phase 1 Gate","Akin Adesola","Chevron","Osapa London","Ajah"]},
+  "DANFO-VI":{name:"CMS → Victoria Island",short:"CMS–VI",type:"Danfo",color:"#F4B400",stops:["CMS","Bar Beach","Ozumba Mbadiwe","Oniru Market","Akin Adesola"]},
+  "DANFO-IS":{name:"Lagos Island Loop",short:"Island Loop",type:"Danfo",color:"#F4B400",stops:["TBS","Onikan","Marina","CMS"]},
+  "DANFO-OS":{name:"Oshodi Local",short:"Oshodi Local",type:"Danfo",color:"#F4B400",stops:["Oshodi","Ejigbo","Isolo","Bariga","Ajegunle"]},
+  "DANFO-BG":{name:"Berger → Ojodu",short:"Berger–Ojodu",type:"Danfo",color:"#F4B400",stops:["Berger","OPIC","Otedola Bridge","Ojodu"]},
+  "DANFO-ST":{name:"Mile 2 → Satellite Town",short:"Mile2–Satellite",type:"Danfo",color:"#F4B400",stops:["Mile 2","Volkswagen","Iba New Site","Satellite Town"]},
+  "DANFO-AJ":{name:"Ajah → Sangotedo",short:"Ajah–Sangotedo",type:"Danfo",color:"#F4B400",stops:["Ajah","Abraham Adesanya","Awoyaya","Lakowe","Sangotedo"]},
+  "FERRY-1":{name:"Marina ↔ Badore",short:"Marina–Badore",type:"Ferry",color:"#0EA5E9",stops:["Marina Jetty","Five Cowries Terminal","Badore Jetty"]},
+  "FERRY-2":{name:"Marina ↔ Ikorodu",short:"Marina–Ikorodu",type:"Ferry",color:"#0EA5E9",stops:["Marina Jetty","Ikorodu Ferry Terminal"]},
+  "FERRY-3":{name:"Five Cowries ↔ Apapa",short:"FiveCowries–Apapa",type:"Ferry",color:"#0EA5E9",stops:["Five Cowries Terminal","Marina Jetty","Apapa Jetty"]},
+};
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let map, userMarker, watchId;
+let userLat = null, userLng = null;
+let currentMode = 'all';
+let routeSourceAdded = false;
+const SK = Object.keys(STOPS);
+
+// ══════════════════════════════════════════════
+// SPLASH
+// ══════════════════════════════════════════════
+const spMsgs = ['Connecting to TomTom...','Loading Lagos streets...','Mapping 200+ stops...','Ready!'];
+let spIdx = 0;
+const spFill = document.getElementById('sp-fill');
+const spMsg = document.getElementById('sp-msg');
+const spIv = setInterval(() => {
+  spIdx++;
+  spFill.style.width = (spIdx / spMsgs.length * 100) + '%';
+  if (spMsgs[spIdx]) spMsg.textContent = spMsgs[spIdx];
+  if (spIdx >= spMsgs.length - 1) clearInterval(spIv);
+}, 500);
+
+setTimeout(() => {
+  document.getElementById('splash').classList.add('out');
+  setTimeout(() => {
+    document.getElementById('splash').style.display = 'none';
+    document.getElementById('app').classList.add('on');
+    initApp();
+  }, 420);
+}, 2200);
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+function initApp() {
+  map = tt.map({
+    key: KEY,
+    container: 'map',
+    center: [3.3792, 6.5244],
+    zoom: 12,
+    language: 'en-GB',
+    stylesVisibility: { trafficIncidents: true, trafficFlow: true, poi: true },
+  });
+  map.addControl(new tt.NavigationControl({ showZoom: true, showCompass: true }), 'top-right');
+  map.on('load', () => { plotStops(); renderLines(); positionUI(); });
+
+  // Events
+  document.getElementById('fab-gps').addEventListener('click', locateUser);
+  document.getElementById('use-loc-btn').addEventListener('click', locateUser);
+  document.getElementById('fab-layers').addEventListener('click', toggleStyle);
+  document.getElementById('go-btn').addEventListener('click', doRoute);
+  document.getElementById('swap-btn').addEventListener('click', swapInputs);
+
+  document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+  document.querySelectorAll('.mode-card').forEach(c => c.addEventListener('click', () => setMode(c.dataset.mode)));
+
+  bindAC('from-inp', 'ac-from');
+  bindAC('to-inp', 'ac-to');
+
+  // Sheet drag
+  const sheet = document.getElementById('sheet');
+  let ty = 0, sh = 0;
+  document.querySelector('.drag-bar').addEventListener('touchstart', e => { ty = e.touches[0].clientY; sh = sheet.offsetHeight; }, { passive: true });
+  document.querySelector('.drag-bar').addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - ty;
+    if (dy > 60) sheet.style.height = '64px';
+    else if (dy < -40) sheet.style.height = '72vh';
+  }, { passive: true });
+}
+
+function positionUI() {
+  const sheet = document.getElementById('sheet');
+  const sh = sheet.offsetHeight || 220;
+  document.getElementById('fab-gps').style.bottom = (sh + 16) + 'px';
+  document.getElementById('fab-layers').style.bottom = (sh + 72) + 'px';
+  document.getElementById('status-bar').style.bottom = (sh + 16) + 'px';
+}
+
+// ══════════════════════════════════════════════
+// PLOT STOPS
+// ══════════════════════════════════════════════
+function plotStops() {
+  SK.forEach(name => {
+    const s = STOPS[name];
+    const isBRT = s.routes.some(r => r.startsWith('BRT'));
+    const isFerry = s.ferry;
+    const isTerm = s.type.includes('Terminal');
+    const sz = isTerm ? 14 : 9;
+    const col = isFerry ? '#0EA5E9' : isBRT ? '#1A73E8' : '#F4B400';
+    const bc = isFerry ? '#BAE6FD' : isBRT ? '#93C5FD' : '#FDE68A';
+
+    const el = document.createElement('div');
+    el.style.cssText = `width:${sz}px;height:${sz}px;background:${col};border:2px solid ${bc};border-radius:50%;box-shadow:0 1px 5px rgba(0,0,0,0.25);cursor:pointer;transition:transform 0.15s;`;
+    el.addEventListener('mouseenter', () => el.style.transform = 'scale(1.5)');
+    el.addEventListener('mouseleave', () => el.style.transform = '');
+
+    const mk = new tt.Marker({ element: el }).setLngLat([s.lng, s.lat]).addTo(map);
+    const extras = [s.keke ? '🛺 Keke' : '', s.bike ? '🏍️ Okada' : '', s.ferry ? '⛴️ Ferry' : ''].filter(Boolean);
+    const rtags = s.routes.map(r => ROUTES[r] ? `<span style="background:#DBEAFE;color:#1E40AF;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;margin:2px;">${ROUTES[r].short}</span>` : '').join('');
+    mk.setPopup(new tt.Popup({ offset: 14, maxWidth: '250px' }).setHTML(
+      `<div style="font-family:'Inter',sans-serif;padding:12px;">
+        <div style="font-size:14px;font-weight:800;margin-bottom:2px;">${name}</div>
+        <div style="font-size:11px;color:#5F6368;margin-bottom:6px;">${s.type}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:4px;">${rtags}</div>
+        ${extras.length ? `<div style="font-size:11px;color:#5F6368;margin-top:4px;">${extras.join(' · ')}</div>` : ''}
+      </div>`
+    ));
+    el.addEventListener('click', () => mk.togglePopup());
+  });
+}
+
+// ══════════════════════════════════════════════
+// GPS
+// ══════════════════════════════════════════════
+function locateUser() {
+  if (!navigator.geolocation) { showStatus('GPS not supported', 'err'); return; }
+  const btn = document.getElementById('fab-gps');
+  btn.textContent = '⏳';
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+
+  watchId = navigator.geolocation.watchPosition(pos => {
+    userLat = pos.coords.latitude;
+    userLng = pos.coords.longitude;
+    const acc = Math.round(pos.coords.accuracy);
+
+    if (!userMarker) {
+      const el = document.createElement('div');
+      el.style.cssText = 'width:18px;height:18px;background:#1A73E8;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 5px rgba(26,115,232,0.2),0 2px 8px rgba(0,0,0,0.3);';
+      userMarker = new tt.Marker({ element: el }).setLngLat([userLng, userLat]).addTo(map);
+      map.flyTo({ center: [userLng, userLat], zoom: 15, speed: 1.5 });
+    } else {
+      userMarker.setLngLat([userLng, userLat]);
+    }
+
+    btn.textContent = '📍';
+    btn.classList.add('live');
+    showStatus(`Live · ±${acc}m`, 'live');
+    document.getElementById('from-inp').value = 'My Location';
+    updateNearby();
+  }, err => {
+    btn.textContent = '📍';
+    const m = { 1: 'Location denied — check Chrome settings', 2: 'GPS signal lost', 3: 'GPS timed out — move outside' };
+    showStatus(m[err.code] || 'Location error', 'err');
+    setTimeout(() => document.getElementById('status-bar').classList.remove('show'), 5000);
+  }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 });
+}
+
+function showStatus(msg, type) {
+  const bar = document.getElementById('status-bar');
+  document.getElementById('s-txt').textContent = msg;
+  bar.className = `show ${type}`;
+}
+
+// ══════════════════════════════════════════════
+// ROUTING — ACCURATE DIRECTION
+// ══════════════════════════════════════════════
+async function doRoute() {
+  const fv = document.getElementById('from-inp').value.trim();
+  const tv = document.getElementById('to-inp').value.trim();
+  if (!fv) { showResult('<div class="notice"><span class="notice-ico">⚠️</span><span class="notice-txt">Please enter your starting point.</span></div>'); return; }
+  if (!tv) { showResult('<div class="notice"><span class="notice-ico">⚠️</span><span class="notice-txt">Please enter your destination.</span></div>'); return; }
+
+  document.getElementById('go-btn').textContent = '⏳ Finding route...';
+  document.getElementById('go-btn').disabled = true;
+
+  let fLat, fLng, fLabel, fStop;
+  let tLat, tLng, tLabel, tStop;
+
+  // Resolve FROM
+  if ((fv.toLowerCase() === 'my location') && userLat) {
+    fLat = userLat; fLng = userLng; fLabel = 'Your Location';
+    fStop = nearestStop(userLat, userLng);
+  } else {
+    fStop = matchStop(fv);
+    if (fStop) { fLat = STOPS[fStop].lat; fLng = STOPS[fStop].lng; fLabel = fStop; }
+    else {
+      const g = await geocode(fv);
+      if (!g) { showResult(`<div class="notice"><span class="notice-ico">❌</span><span class="notice-txt">Could not find "${fv}". Try a bus stop name.</span></div>`); resetBtn(); return; }
+      fLat = g.lat; fLng = g.lng; fLabel = g.name || fv;
+      fStop = nearestStop(fLat, fLng);
+    }
+  }
+
+  // Resolve TO
+  tStop = matchStop(tv);
+  if (tStop) { tLat = STOPS[tStop].lat; tLng = STOPS[tStop].lng; tLabel = tStop; }
+  else {
+    const g = await geocode(tv);
+    if (!g) { showResult(`<div class="notice"><span class="notice-ico">❌</span><span class="notice-txt">Could not find "${tv}". Try a bus stop name.</span></div>`); resetBtn(); return; }
+    tLat = g.lat; tLng = g.lng; tLabel = g.name || tv;
+    tStop = nearestStop(tLat, tLng);
+  }
+
+  // Validate direction — ensure we go FROM → TO not reverse
+  const fData = STOPS[fStop], tData = STOPS[tStop];
+  if (!fData || !tData) { showResult('<div class="notice"><span class="notice-ico">❌</span><span class="notice-txt">Could not resolve stops. Try more specific names.</span></div>'); resetBtn(); return; }
+
+  // Draw TomTom route on real roads
+  await drawRealRoute(fLat, fLng, tLat, tLng);
+
+  // Build steps
+  const steps = buildSteps(fStop, tStop, fLat, fLng, tLat, tLng);
+  const totalDist = haversine(fLat, fLng, tLat, tLng);
+  const estMins = Math.max(10, Math.round(totalDist * 4.5 + steps.filter(s => s.trx).length * 8));
+  const dStr = totalDist < 1 ? `${Math.round(totalDist * 1000)}m` : `${totalDist.toFixed(1)}km`;
+
+  const stepsHTML = steps.map((s, i) => `
+    <div class="step">
+      <div class="step-l">
+        <div class="step-bub ${s.bub}">${s.ico}</div>
+        ${i < steps.length - 1 ? '<div class="step-line"></div>' : ''}
+      </div>
+      <div class="step-r">
+        <div class="step-title">${s.title}</div>
+        <div class="step-detail">${s.detail}</div>
+        ${s.warn ? `<span class="step-tag tag-warn">⚠️ Long walk — take Keke or Okada</span>` : ''}
+        ${s.dist ? `<span class="step-tag tag-info">📏 ${s.dist}</span>` : ''}
+        ${s.avail ? `<span class="step-tag tag-green">${s.avail}</span>` : ''}
+      </div>
+    </div>`).join('');
+
+  showResult(`
+    <div class="r-summary">
+      <div class="r-sum-title">${fLabel} → ${tLabel}</div>
+      <div class="r-chips">
+        <span class="rchip rc-blue">⏱ ~${estMins} min</span>
+        <span class="rchip rc-grey">📏 ${dStr}</span>
+        <span class="rchip rc-green">🗺️ ${getModeLabel()} Mode</span>
+      </div>
+    </div>
+    <div class="steps">${stepsHTML}</div>
+  `);
+
+  resetBtn();
+  // expand sheet
+  document.getElementById('sheet').style.height = '72vh';
+}
+
+// ══════════════════════════════════════════════
+// DRAW REAL ROUTE ON MAP
+// ══════════════════════════════════════════════
+async function drawRealRoute(fLat, fLng, tLat, tLng) {
+  try {
+    const modeMap = { all: 'car', brt: 'bus', danfo: 'bus', keke: 'taxi', okada: 'motorcycle', ferry: 'car', walk: 'pedestrian' };
+    const tmode = modeMap[currentMode] || 'car';
+
+    const resp = await tt.services.calculateRoute({
+      key: KEY,
+      locations: `${fLng},${fLat}:${tLng},${tLat}`,
+      travelMode: tmode,
+      traffic: true,
+    });
+
+    const geojson = resp.toGeoJson();
+    const coords = geojson.features[0]?.geometry?.coordinates;
+    if (!coords || !coords.length) return;
+
+    if (map.getSource('route-src')) {
+      map.getSource('route-src').setData(geojson);
+    } else {
+      map.addSource('route-src', { type: 'geojson', data: geojson });
+      map.addLayer({ id: 'route-outline', type: 'line', source: 'route-src', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fff', 'line-width': 8, 'line-opacity': 0.7 } });
+      map.addLayer({ id: 'route-line', type: 'line', source: 'route-src', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#1A73E8', 'line-width': 5, 'line-opacity': 0.95 } });
+    }
+
+    const bounds = coords.reduce((b, c) => b.extend(c), new tt.LngLatBounds(coords[0], coords[0]));
+    map.fitBounds(bounds, { padding: { top: 80, bottom: 260, left: 50, right: 50 } });
+
+  } catch (e) {
+    console.warn('Route draw error:', e);
+    // fallback straight line
+    const coords = [[fLng, fLat], [tLng, tLat]];
+    const geojson = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } }] };
+    if (map.getSource('route-src')) {
+      map.getSource('route-src').setData(geojson);
+    } else {
+      map.addSource('route-src', { type: 'geojson', data: geojson });
+      map.addLayer({ id: 'route-line', type: 'line', source: 'route-src', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#1A73E8', 'line-width': 5, 'line-opacity': 0.9, 'line-dasharray': [2, 2] } });
+    }
+    map.fitBounds([[Math.min(fLng,tLng), Math.min(fLat,tLat)], [Math.max(fLng,tLng), Math.max(fLat,tLat)]], { padding: 80 });
+  }
+}
+
+// ══════════════════════════════════════════════
+// BUILD STEPS (ACCURATE DIRECTION)
+// ══════════════════════════════════════════════
+function buildSteps(fStop, tStop, fLat, fLng, tLat, tLng) {
+  const steps = [];
+  const fD = STOPS[fStop], tD = STOPS[tStop];
+  if (!fD || !tD) return steps;
+
+  // 1. Walk to first stop (if user location known)
+  if (userLat) {
+    const walkDist = haversine(userLat, userLng, fD.lat, fD.lng);
+    if (walkDist > 0.05) {
+      const wm = Math.round(walkDist * 1000);
+      steps.push({
+        ico: '🚶', bub: 'b-walk',
+        title: `Walk to ${fStop}`,
+        detail: `Head ${wm}m to the bus stop`,
+        dist: `${wm}m`,
+        warn: walkDist > 1,
+      });
+    }
+  }
+
+  // 2. Filter routes by selected mode
+  const filterRoute = (rkey) => {
+    if (currentMode === 'all') return true;
+    if (currentMode === 'brt') return rkey.startsWith('BRT');
+    if (currentMode === 'danfo') return rkey.startsWith('DANFO');
+    if (currentMode === 'ferry') return rkey.startsWith('FERRY');
+    if (currentMode === 'walk') return false;
+    return true;
+  };
+
+  // 3. Find direct route FROM → TO (correct direction)
+  let found = false;
+  const fRoutes = fD.routes.filter(filterRoute);
+  const tRoutes = tD.routes.filter(filterRoute);
+  const direct = fRoutes.filter(r => tRoutes.includes(r));
+
+  if (direct.length) {
+    const rk = direct[0];
+    const r = ROUTES[rk];
+    if (r) {
+      const fi = r.stops.indexOf(fStop);
+      const ti = r.stops.indexOf(tStop);
+      if (fi !== -1 && ti !== -1) {
+        // Determine direction correctly
+        const dir = ti > fi ? 1 : -1;
+        const stopsOnWay = ti > fi
+          ? r.stops.slice(fi, ti + 1)
+          : r.stops.slice(ti, fi + 1).reverse();
+        const n = stopsOnWay.length - 1;
+        const d = haversine(fD.lat, fD.lng, tD.lat, tD.lng);
+        const ico = r.type === 'BRT' ? '🚌' : r.type === 'Ferry' ? '⛴️' : '🚐';
+        const bub = r.type === 'BRT' ? 'b-brt' : r.type === 'Ferry' ? 'b-ferry' : 'b-danfo';
+        steps.push({
+          ico, bub,
+          title: `${r.type} — ${r.name}`,
+          detail: `Board at <b>${fStop}</b> → Alight at <b>${tStop}</b> · ${n} stop${n !== 1 ? 's' : ''} · Direction: ${r.stops[r.stops.length - 1]}`,
+          dist: `${d.toFixed(1)}km`,
+        });
+        found = true;
+      }
+    }
+  }
+
+  // 4. Connection via transfer stop
+  if (!found) {
+    let best = null;
+    for (const fr of fRoutes) {
+      for (const tr of tRoutes) {
+        const rF = ROUTES[fr], rT = ROUTES[tr];
+        if (!rF || !rT) continue;
+        const common = rF.stops.filter(s => rT.stops.includes(s) && s !== fStop && s !== tStop && STOPS[s]);
+        if (common.length) {
+          // Pick via stop closest to midpoint
+          const mid = { lat: (fD.lat + tD.lat) / 2, lng: (fD.lng + tD.lng) / 2 };
+          const via = common.sort((a, b) => haversine(STOPS[a].lat, STOPS[a].lng, mid.lat, mid.lng) - haversine(STOPS[b].lat, STOPS[b].lng, mid.lat, mid.lng))[0];
+          best = { via, fr, tr, rF, rT }; break;
+        }
+      }
+      if (best) break;
+    }
+
+    if (best) {
+      const { via, rF, rT } = best;
+      const vD = STOPS[via];
+      const fi1 = rF.stops.indexOf(fStop), vi1 = rF.stops.indexOf(via);
+      const vi2 = rT.stops.indexOf(via), ti2 = rT.stops.indexOf(tStop);
+      const n1 = Math.abs(vi1 - fi1), n2 = Math.abs(ti2 - vi2);
+      const d1 = haversine(fD.lat, fD.lng, vD.lat, vD.lng);
+      const d2 = haversine(vD.lat, vD.lng, tD.lat, tD.lng);
+      const ico1 = rF.type === 'BRT' ? '🚌' : rF.type === 'Ferry' ? '⛴️' : '🚐';
+      const ico2 = rT.type === 'BRT' ? '🚌' : rT.type === 'Ferry' ? '⛴️' : '🚐';
+      steps.push({
+        ico: ico1, bub: rF.type === 'BRT' ? 'b-brt' : rF.type === 'Ferry' ? 'b-ferry' : 'b-danfo',
+        title: `${rF.type} — ${rF.name}`,
+        detail: `Board at <b>${fStop}</b> → Alight at <b>${via}</b> · ${n1} stops · Dir: ${rF.stops[rF.stops.length - 1]}`,
+        dist: `${d1.toFixed(1)}km`,
+      });
+      steps.push({
+        ico: '🔄', bub: 'b-trx', trx: true,
+        title: `Transfer at ${via}`,
+        detail: `Alight and wait for ${rT.type} toward ${rT.stops[rT.stops.length - 1]}`,
+        dist: '~5 min',
+      });
+      steps.push({
+        ico: ico2, bub: rT.type === 'BRT' ? 'b-brt' : rT.type === 'Ferry' ? 'b-ferry' : 'b-danfo',
+        title: `${rT.type} — ${rT.name}`,
+        detail: `Board at <b>${via}</b> → Alight at <b>${tStop}</b> · ${n2} stops · Dir: ${rT.stops[rT.stops.length - 1]}`,
+        dist: `${d2.toFixed(1)}km`,
+      });
+      found = true;
+    }
+  }
+
+  // 5. Fallback via nearest hub
+  if (!found) {
+    const hub = bestHub(fD.lat, fD.lng, tStop);
+    const hD = STOPS[hub];
+    const d1 = haversine(fD.lat, fD.lng, hD.lat, hD.lng);
+    const d2 = haversine(hD.lat, hD.lng, tD.lat, tD.lng);
+    steps.push({
+      ico: '🚐', bub: 'b-danfo',
+      title: `Danfo toward ${hub}`,
+      detail: `Take any bus heading to ${hub} — major transit hub`,
+      dist: `${d1.toFixed(1)}km`,
+    });
+    steps.push({
+      ico: '🔄', bub: 'b-trx', trx: true,
+      title: `Connect at ${hub}`,
+      detail: `Ask for bus going to ${tStop} or toward the destination area`,
+      dist: '~10 min',
+    });
+    steps.push({
+      ico: '🚐', bub: 'b-danfo',
+      title: `Continue toward ${tStop}`,
+      detail: `Board bus or Danfo heading toward destination`,
+      dist: `${d2.toFixed(1)}km`,
+    });
+  }
+
+  // 6. Mode-specific notices
+  if (currentMode === 'keke' && !steps.some(s => s.bub === 'b-keke')) {
+    steps.push({ ico: '🛺', bub: 'b-keke', title: 'Keke to final destination', detail: `Tricycles available ${tD.keke ? 'at ' + tStop : 'in most parts of Lagos'} for last-mile`, avail: tD.keke ? '✅ Available here' : '⚠️ Confirm locally' });
+  }
+  if (currentMode === 'okada') {
+    steps.push({ ico: '🏍️', bub: 'b-okada', title: 'Okada (Bike) note', detail: tD.bike ? `Okada available at ${tStop}` : 'Okada availability varies — confirm locally', avail: tD.bike ? '✅ Available' : '⚠️ Check locally' });
+  }
+  if (currentMode === 'ferry' && !steps.some(s => s.bub === 'b-ferry')) {
+    steps.unshift({ ico: '⚠️', bub: 'b-trx', title: 'No direct ferry route', detail: 'No ferry connects these locations. Showing road route instead.' });
+  }
+
+  // 7. Last-mile step
+  const lastMile = haversine(tD.lat, tD.lng, tLat, tLng);
+  if (lastMile > 0.15) {
+    if (tD.keke || tD.bike) {
+      steps.push({
+        ico: tD.bike ? '🏍️' : '🛺', bub: tD.bike ? 'b-okada' : 'b-keke',
+        title: `${tD.bike ? 'Okada' : 'Keke'} to final destination`,
+        detail: `${Math.round(lastMile * 1000)}m from ${tStop} — ${tD.bike ? 'motorcycles' : 'tricycles'} available at this stop`,
+        dist: `~${Math.round(lastMile * 1000)}m`,
+        avail: '✅ Available at this stop',
+      });
+    } else {
+      steps.push({
+        ico: '🚶', bub: 'b-walk',
+        title: `Walk to destination`,
+        detail: `${Math.round(lastMile * 1000)}m from ${tStop}${lastMile > 1 ? ' — consider Keke or Okada nearby' : ''}`,
+        dist: `${Math.round(lastMile * 1000)}m`,
+        warn: lastMile > 1,
+      });
+    }
+  }
+
+  return steps;
+}
+
+function showResult(html) {
+  document.getElementById('result-box').innerHTML = html;
+}
+
+function resetBtn() {
+  const btn = document.getElementById('go-btn');
+  btn.textContent = '🔍 Get Directions';
+  btn.disabled = false;
+}
+
+// ══════════════════════════════════════════════
+// GEOCODE
+// ══════════════════════════════════════════════
+async function geocode(q) {
+  try {
+    const r = await tt.services.fuzzySearch({
+      key: KEY, query: q + ' Lagos Nigeria',
+      limit: 1, countrySet: 'NG',
+      center: { lat: 6.5244, lon: 3.3792 }, radius: 80000,
+    });
+    if (r.results && r.results.length) {
+      const res = r.results[0];
+      return { lat: res.position.lat, lng: res.position.lon, name: res.poi?.name || res.address?.freeformAddress || q };
+    }
+  } catch (e) {}
+  return null;
+}
+
+// ══════════════════════════════════════════════
+// NEARBY
+// ══════════════════════════════════════════════
+function updateNearby() {
+  if (!userLat) return;
+  const sorted = SK.map(n => ({ n, d: haversine(userLat, userLng, STOPS[n].lat, STOPS[n].lng) }))
+    .sort((a, b) => a.d - b.d).slice(0, 12);
+  document.getElementById('nb-hd').textContent = `${sorted.length} stops near you`;
+  document.getElementById('nb-list').innerHTML = sorted.map(({ n, d }) => {
+    const s = STOPS[n];
+    const isBRT = s.routes.some(r => r.startsWith('BRT'));
+    const isFerry = s.ferry;
+    const dStr = d < 1 ? `${Math.round(d * 1000)}m` : `${d.toFixed(1)}km`;
+    const bg = isFerry ? '#E0F2FE' : isBRT ? '#DBEAFE' : '#FEF9C3';
+    const extras = [s.keke ? '🛺' : '', s.bike ? '🏍️' : '', isFerry ? '⛴️' : ''].filter(Boolean).join(' ');
+    return `<div class="nb-card" onclick="focusStop('${n}')">
+      <div class="nb-ico" style="background:${bg};">${isFerry ? '⛴️' : isBRT ? '🚌' : '🚐'}</div>
+      <div class="nb-info"><div class="nb-name">${n}</div><div class="nb-meta">${s.type}${extras ? ' · ' + extras : ''}</div></div>
+      <div class="nb-dist">${dStr}</div>
+    </div>`;
+  }).join('');
+}
+
+function focusStop(name) {
+  const s = STOPS[name];
+  map.flyTo({ center: [s.lng, s.lat], zoom: 16 });
+  switchTab('route');
+}
+
+// ══════════════════════════════════════════════
+// LINES
+// ══════════════════════════════════════════════
+function renderLines() {
+  const brt = Object.entries(ROUTES).filter(([k]) => k.startsWith('BRT'));
+  const danfo = Object.entries(ROUTES).filter(([k]) => k.startsWith('DANFO'));
+  const ferry = Object.entries(ROUTES).filter(([k]) => k.startsWith('FERRY'));
+
+  const sec = (title, routes) => !routes.length ? '' : `
+    <div class="ln-sec-hd">${title}</div>
+    ${routes.map(([k, r]) => `
+      <div class="ln-card" onclick="showLine('${k}')">
+        <div class="ln-pill" style="background:${r.color};"></div>
+        <div class="ln-info"><div class="ln-name">${r.name}</div><div class="ln-meta">${r.stops.length} stops</div></div>
+        <span class="ln-badge ${r.type==='BRT'?'lb-brt':r.type==='Ferry'?'lb-ferry':'lb-danfo'}">${r.type}</span>
+      </div>`).join('')}`;
+
+  document.getElementById('ln-wrap').innerHTML = sec('🔵 BRT Routes', brt) + sec('🟡 Danfo Routes', danfo) + sec('🔷 Ferry Routes', ferry);
+}
+
+function showLine(key) {
+  const r = ROUTES[key];
+  if (!r) return;
+  const coords = r.stops.map(s => STOPS[s] ? [STOPS[s].lng, STOPS[s].lat] : null).filter(Boolean);
+  if (coords.length < 2) return;
+  const geojson = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } }] };
+  if (map.getSource('route-src')) {
+    map.getSource('route-src').setData(geojson);
+  } else {
+    map.addSource('route-src', { type: 'geojson', data: geojson });
+    map.addLayer({ id: 'route-line', type: 'line', source: 'route-src', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': r.color, 'line-width': 5 } });
+  }
+  const b = coords.reduce((b, c) => b.extend(c), new tt.LngLatBounds(coords[0], coords[0]));
+  map.fitBounds(b, { padding: 60 });
+}
+
+// ══════════════════════════════════════════════
+// MODE
+// ══════════════════════════════════════════════
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-card').forEach(c => c.classList.toggle('on', c.dataset.mode === mode));
+  document.getElementById('sheet-status-txt').textContent = `Mode: ${getModeLabel()}`;
+}
+
+function getModeLabel() {
+  const labels = { all: 'Any Transport', brt: 'BRT Bus', danfo: 'Danfo', keke: 'Keke Napep', okada: 'Okada', ferry: 'Ferry', walk: 'Walking' };
+  return labels[currentMode] || 'Any';
+}
+
+// ══════════════════════════════════════════════
+// MAP STYLE
+// ══════════════════════════════════════════════
+let darkMap = false;
+function toggleStyle() {
+  darkMap = !darkMap;
+  document.getElementById('fab-layers').textContent = darkMap ? '☀️' : '🗺️';
+  if (darkMap) {
+    map.setStyle({ map: 'basic_night', poi: 'poi_dark', trafficIncidents: 'incidents_night', trafficFlow: 'flow_relative0-dark' });
+  } else {
+    map.setStyle({ map: 'basic_main', poi: 'poi_main', trafficIncidents: 'incidents_day', trafficFlow: 'flow_relative0' });
+  }
+  map.once('styledata', plotStops);
+}
+
+// ══════════════════════════════════════════════
+// AUTOCOMPLETE
+// ══════════════════════════════════════════════
+function bindAC(inputId, listId) {
+  const inp = document.getElementById(inputId);
+  const list = document.getElementById(listId);
+  let timer;
+  inp.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = inp.value.toLowerCase().trim();
+    if (q.length < 2) { list.style.display = 'none'; return; }
+    timer = setTimeout(async () => {
+      const local = SK.filter(n => n.toLowerCase().includes(q)).slice(0, 6);
+      let ttHits = [];
+      if (q.length >= 3) {
+        try {
+          const r = await tt.services.fuzzySearch({ key: KEY, query: q + ' Lagos', limit: 4, countrySet: 'NG', center: { lat: 6.5244, lon: 3.3792 }, radius: 60000 });
+          ttHits = (r.results || []).filter(x => !SK.some(n => n.toLowerCase() === (x.poi?.name || '').toLowerCase()));
+        } catch (e) {}
+      }
+      const items = [
+        ...local.map(n => { const s = STOPS[n]; const isBRT = s.routes.some(r => r.startsWith('BRT')); return `<div class="ac-item" onclick="pickAC('${inputId}','${listId}','${n.replace(/'/g,"\\'")}')"><span style="font-size:15px;">${isBRT?'🚌':'🚐'}</span><div><div class="ac-name">${n}</div><div class="ac-sub">${s.type}</div></div></div>`; }),
+        ...ttHits.slice(0, 3).map(x => { const name = (x.poi?.name || x.address?.streetName || x.address?.freeformAddress || '').replace(/'/g, "\\'"); const sub = x.address?.freeformAddress || 'Lagos'; return `<div class="ac-item" onclick="pickPlace('${inputId}','${listId}','${name}',${x.position.lat},${x.position.lon})"><span style="font-size:15px;">📍</span><div><div class="ac-name">${name}</div><div class="ac-sub">${sub}</div></div></div>`; }),
+      ];
+      if (!items.length) { list.style.display = 'none'; return; }
+      list.innerHTML = items.join('');
+      list.style.display = 'block';
+    }, 350);
+  });
+  document.addEventListener('click', e => { if (!inp.contains(e.target) && !list.contains(e.target)) list.style.display = 'none'; });
+}
+
+function pickAC(inputId, listId, name) {
+  document.getElementById(inputId).value = name;
+  document.getElementById(listId).style.display = 'none';
+}
+
+function pickPlace(inputId, listId, name, lat, lng) {
+  document.getElementById(inputId).value = name;
+  document.getElementById(listId).style.display = 'none';
+  map.flyTo({ center: [lng, lat], zoom: 15 });
+}
+
+// ══════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  ['route', 'nearby', 'lines'].forEach(t => document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none');
+  document.getElementById('sheet').style.height = '72vh';
+}
+
+function swapInputs() {
+  const f = document.getElementById('from-inp'), t = document.getElementById('to-inp');
+  [f.value, t.value] = [t.value, f.value];
+}
+
+// ══════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════
+function haversine(la1, lo1, la2, lo2) {
+  const R = 6371, dLa = (la2 - la1) * Math.PI / 180, dLo = (lo2 - lo1) * Math.PI / 180;
+  const a = Math.sin(dLa/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function nearestStop(lat, lng) {
+  return SK.reduce((b, n) => haversine(lat, lng, STOPS[n].lat, STOPS[n].lng) < haversine(lat, lng, STOPS[b].lat, STOPS[b].lng) ? n : b, SK[0]);
+}
+
+function matchStop(q) {
+  const lq = q.toLowerCase().trim();
+  if (lq === 'my location') return null;
+  return SK.find(n => n.toLowerCase() === lq) || SK.find(n => n.toLowerCase().includes(lq) || lq.includes(n.toLowerCase())) || null;
+}
+
+function bestHub(lat, lng, exclude) {
+  const hubs = ['Oshodi','Mile 12','Ojota','Yaba','CMS','Berger','Mile 2','Iyana Ipaja','TBS','Ikeja','Ajah'];
+  return hubs.filter(h => h !== exclude && STOPS[h])
+    .reduce((b, h) => haversine(lat, lng, STOPS[h].lat, STOPS[h].lng) < haversine(lat, lng, STOPS[b].lat, STOPS[b].lng) ? h : b);
+}
+</script>
+</body>
+</html>
